@@ -378,6 +378,8 @@ boolean sampleHID(hid_input_t *hid_state) {
     changed = true;
     rotaryPosState = rotaryPos;
   }
+  
+  hid_state->active = changed;
 
   processButtonPress(
     (okButton == LOW), currentMillis,
@@ -387,7 +389,7 @@ boolean sampleHID(hid_input_t *hid_state) {
     (backButton == LOW), currentMillis,
     &backPressState, &backPressStart, &backLongPressState, &changed);
 
-  hid_state->active = changed | okPressState | backPressState;
+  hid_state->active |= okPressState | backPressState;
   hid_state->changed = changed;
   hid_state->rotaryPos = rotaryPosState;
   hid_state->okPress = okPressState;
@@ -395,7 +397,7 @@ boolean sampleHID(hid_input_t *hid_state) {
   hid_state->okLongPress = okLongPressState;
   hid_state->backLongPress = backLongPressState;
   
-  return changed;
+  return hid_state->active;
 }
 
 void processButtonPress(boolean btnPressed, unsigned long currentMillis, 
