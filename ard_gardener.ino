@@ -42,8 +42,8 @@
 
 
 // SPI Hardware Pins: SPI: 10 (SS), 11 (MOSI), 12 (MISO), 13 (SCK).
-#define dc   8
-#define rst  9
+#define dc   9
+#define rst  8
 #define ss   10
 #define mosi 11 /* native h/w pins are fastest */
 #define miso 12 /* native h/w pins are fastest */
