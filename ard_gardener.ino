@@ -10,6 +10,9 @@
   Configuration Settings
  ****************************************************/
 
+
+#define _SSD_SIZEOPTIMIZER
+
 // Control output to the Serial Port.
 #define SerialOn      true
 #define SerialSpeed   57600
@@ -42,8 +45,8 @@
 
 
 // SPI Hardware Pins: SPI: 10 (SS), 11 (MOSI), 12 (MISO), 13 (SCK).
-#define dc   8
-#define rst  9
+#define rst  8
+#define dc   9
 #define ss   10
 #define mosi 11 /* native h/w pins are fastest */
 #define miso 12 /* native h/w pins are fastest */
@@ -58,14 +61,14 @@
  ****************************************************/
 
 // Color definitions
-#define BLACK           0x0000
-#define BLUE            0x001F
-#define RED             0xF800
-#define GREEN           0x07E0
-#define CYAN            0x07FF
-#define MAGENTA         0xF81F
-#define YELLOW          0xFFE0
-#define WHITE           0xFFFF
+//#define BLACK           0x0000
+//#define BLUE            0x001F
+//#define RED             0xF800
+//#define GREEN           0x07E0
+//#define CYAN            0x07FF
+//#define MAGENTA         0xF81F
+//#define YELLOW          0xFFE0
+//#define WHITE           0xFFFF
 #define GRAY            0xCCCC
 
 
@@ -103,8 +106,9 @@ typedef struct {
 
 // SPI Graphics
 #include <SPI.h>
-#include <Adafruit_GFX.h>
-#include <Adafruit_SSD1331.h>
+//#include <Adafruit_GFX.h>
+//#include <Adafruit_SSD1331.h>
+#include <SSD_13XX.h>
 
 // HID Inputs
 //#include <PinChangeInterrupt.h>
@@ -129,7 +133,9 @@ typedef struct {
 // Option 1: use any pins but a little slower
 //Adafruit_SSD1331 display = Adafruit_SSD1331(ss, dc, mosi, sclk, rst);
 // Option 2: must use the hardware SPI pins
-Adafruit_SSD1331 display = Adafruit_SSD1331(ss, dc, rst);
+//Adafruit_SSD1331 display = Adafruit_SSD1331(ss, dc, rst);
+// Option 3: use the Sumotoy SSD driver (fast)!
+SSD_13XX display = SSD_13XX(ss, dc);
 
 // Create RotaryEncoder:
 RotaryEncoder encoder(rotaryPin1, rotaryPin2);
@@ -148,6 +154,10 @@ MenuSystem ms;
  ****************************************************/
 
 void setup(void) {
+  // Reset Pin
+  digitalWrite(rst, HIGH);
+  pinMode(rst, OUTPUT);
+  
   if (SerialOn) {
     Serial.begin(SerialSpeed);
     Serial.println(">>>");
@@ -315,7 +325,7 @@ void initDisplay(boolean runQuickTest) {
     //    printTimeTaken(time);
     display.setCursor(5, 10);
     display.setTextColor(BLUE);
-    display.setTextSize(2);
+    display.setTextScale(2);
     display.print(time);
     display.print("ms");
 
@@ -332,7 +342,7 @@ void initSensors(boolean showSummary) {
     if (SerialOn) Serial.println("Couldn't find MCP9808!");
 
     display.fillScreen(BLACK);
-    display.setTextSize(1);
+    display.setTextScale(1);
     display.setTextColor(RED);
     display.setCursor(0, 0);
     display.print("Couldn't find MCP9808!");
@@ -346,7 +356,7 @@ void initSensors(boolean showSummary) {
     if (SerialOn) Serial.print("Ooops, no BMP085 detected ... Check your wiring or I2C ADDR!");
 
     display.fillScreen(BLACK);
-    display.setTextSize(1);
+    display.setTextScale(1);
     display.setTextColor(RED);
     display.setCursor(0, 0);
     display.print("Ooops, no BMP085 detected ... Check your wiring or I2C ADDR!");
@@ -359,7 +369,7 @@ void initSensors(boolean showSummary) {
     if (SerialOn) Serial.print("Ooops, no Chirp detected ... Check your wiring or I2C ADDR!");
 
     display.fillScreen(BLACK);
-    display.setTextSize(1);
+    display.setTextScale(1);
     display.setTextColor(RED);
     display.setCursor(0, 0);
     display.print("Ooops, no Chirp detected ... Check your wiring or I2C ADDR!");
@@ -374,7 +384,7 @@ void initSensors(boolean showSummary) {
     bmp.getSensor(&sensor);
     display.fillScreen(BLACK);
     display.setCursor(0, 0);
-    display.setTextSize(1);
+    display.setTextScale(1);
     display.setTextColor(GRAY);
     display.print  ("Nom:"); display.println(sensor.name);
     display.print  ("Ver:"); display.println(sensor.version);
@@ -388,7 +398,7 @@ void initSensors(boolean showSummary) {
     chirp.getSensor(&sensor);
     display.fillScreen(BLACK);
     display.setCursor(0, 0);
-    display.setTextSize(1);
+    display.setTextScale(1);
     display.setTextColor(GRAY);
     display.print  ("Nom:"); display.println(sensor.name);
     display.print  ("Ver:"); display.println(sensor.version);
@@ -473,7 +483,7 @@ void processButtonPress(boolean btnPressed, unsigned long currentMillis,
 void displayHidInputs(hid_input_t *hid_inputs) {
   display.setCursor(0, 18);
   display.setTextColor(MAGENTA, BLACK);
-  display.setTextSize(3);
+  display.setTextScale(3);
   display.print(hid_inputs->rotaryPos);
   display.print(" ");
 
@@ -522,7 +532,7 @@ float sampleChirpSensor(boolean displaySensors) {
 
     if (displaySensors) {
       display.setTextColor(RED, BLACK);
-      display.setTextSize(1);
+      display.setTextScale(1);
 
       display.setCursor(0, 0);
 
@@ -557,7 +567,7 @@ void sampleBCP180(boolean displaySensors) {
   {
     if (displaySensors) {
       display.setTextColor(GRAY, BLACK);
-      display.setTextSize(1);
+      display.setTextScale(1);
 
       display.setCursor(0, 24);
 
@@ -610,7 +620,7 @@ void sampleMCP9808(boolean displaySensors) {
 
   if (displaySensors) {
     display.setTextColor(YELLOW, BLACK);
-    display.setTextSize(1);
+    display.setTextScale(1);
     display.setCursor(0, 48); display.print("Temp:");
     display.setCursor(48, 48); display.print(c); display.write(9); display.print("C");
     display.setCursor(48, 56); display.print(f); display.write(9); display.println("F");
@@ -639,7 +649,7 @@ void plotSymbol(char pos, char ch, uint16_t fgColor, uint16_t bgColor, boolean f
   int y = 0 + (pos * h);
 
   display.setCursor(x + border, y);
-  display.setTextSize(textSize);
+  display.setTextScale(textSize);
   display.setTextWrap(false);
 
   if (flash) {
@@ -772,7 +782,7 @@ void displayMenu(bool redraw) {
   Serial.println(redraw);
 
   display.setTextColor(BLUE, BLACK);
-  display.setTextSize(1);
+  display.setTextScale(1);
 
   if (redraw) {
 
@@ -837,7 +847,7 @@ void displayMenu(bool redraw) {
 void on_item_selected(MenuItem* p_menu_item)
 {
   display.setTextColor(RED, BLACK);
-  display.setTextSize(1);
+  display.setTextScale(1);
   display.setCursor(0, 56);
   display.print(p_menu_item->get_name());
   display.print(" selected");
@@ -848,7 +858,7 @@ void on_item1_selected(MenuItem* p_menu_item)
   on_item_selected(p_menu_item);
 
   display.setTextColor(RED, BLACK);
-  display.setTextSize(1);
+  display.setTextScale(1);
   display.setCursor(0, 18);
   display.print("Item1 Selected  ");
   //  delay(1500); // so we can look the result on the LCD
@@ -859,7 +869,7 @@ void on_item2_selected(MenuItem* p_menu_item)
   on_item_selected(p_menu_item);
 
   display.setTextColor(RED, BLACK);
-  display.setTextSize(1);
+  display.setTextScale(1);
   display.setCursor(0, 18);
   display.print("Item2 Selected  ");
   //  delay(1500); // so we can look the result on the LCD
@@ -870,7 +880,7 @@ void on_item3_selected(MenuItem* p_menu_item)
   on_item_selected(p_menu_item);
 
   display.setTextColor(RED, BLACK);
-  display.setTextSize(1);
+  display.setTextScale(1);
   display.setCursor(0, 18);
   display.print("Item3 Selected  ");
   //  delay(1500); // so we can look the result on the LCD
