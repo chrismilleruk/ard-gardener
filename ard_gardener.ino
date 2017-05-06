@@ -5,13 +5,14 @@
   Chris Miller
  ****************************************************/
 
+//Sketch uses 29442 bytes (95%) of program storage space. Maximum is 30720 bytes.
+//Global variables use 1756 bytes (85%) of dynamic memory, leaving 292 bytes for local variables. Maximum is 2048 bytes.
+//Low memory available, stability problems may occur.
+
 
 /***************************************************
   Configuration Settings
  ****************************************************/
-
-
-#define _SSD_SIZEOPTIMIZER
 
 // Control output to the Serial Port.
 #define SerialOn      true
@@ -83,6 +84,7 @@ typedef enum
   VIEWMODE_LIGHT    = 0x06
 } viewmode_type_t;
 
+viewmode_type_t viewDefault = VIEWMODE_SENSORS;
 viewmode_type_t viewMode = VIEWMODE_SENSORS;
 unsigned long viewModeChanged = 0;
 
@@ -157,7 +159,7 @@ void setup(void) {
   // Reset Pin
   digitalWrite(rst, HIGH);
   pinMode(rst, OUTPUT);
-  
+
   if (SerialOn) {
     Serial.begin(SerialSpeed);
     Serial.println(">>>");
@@ -225,9 +227,9 @@ void loop() {
     }
 
     if (hid_inputs.backLongPress) {
-      setViewMode(VIEWMODE_SENSORS);
+      setViewMode(viewDefault);
     } else if (!hid_inputs.active && currentMillis - lastInputActivity > MENU_TIMEOUT) {
-      setViewMode(VIEWMODE_SENSORS);
+      setViewMode(viewDefault);
     }
 
     if (viewMode == VIEWMODE_ROTARY && hid_inputs.changed) {
@@ -240,7 +242,11 @@ void loop() {
       } else if (hid_inputs.rotaryDelta < 0) {
         if (ms.prev()) displayMenu(false);
       } else if (hid_inputs.backPress) {
-        if (ms.back()) displayMenu(true);
+        if (ms.back()) {
+          displayMenu(true);
+        } else {
+          setViewMode(viewDefault);
+        }
       } else if (hid_inputs.okPress) {
         int ptr1 = (int)ms.get_current_menu();
         ms.select();
@@ -260,7 +266,7 @@ void loop() {
     lastSensorLoop = currentMillis;
     boolean sendToDisplay = (viewMode == VIEWMODE_SENSORS);
 
-    heartbeat();
+    if (sendToDisplay) heartbeat();
     float moisture = sampleChirpSensor(sendToDisplay);
     sampleBCP180(sendToDisplay);
     sampleMCP9808(sendToDisplay);
@@ -271,6 +277,21 @@ void loop() {
       digitalWrite(out6, HIGH);
     }
   }
+
+  
+  if (viewMode == VIEWMODE_MOISTURE) {
+    displayRingMeter();
+  }
+
+}
+
+bool setDefaultViewMode(viewmode_type_t newMode) {
+  if (viewDefault != newMode) {
+    viewDefault = newMode;
+    setViewMode(newMode);
+    return true;
+  }
+  return false;
 }
 
 bool setViewMode(viewmode_type_t newMode) {
@@ -664,60 +685,8 @@ void plotSymbol(char pos, char ch, uint16_t fgColor, uint16_t bgColor, boolean f
 
 
 /***************************************************
-  Notes - Not in use.
+  Menu Definition
  ****************************************************/
-
-void mediabuttons() {
-  const int x = 0;
-  const int y = 0;
-  const int w = display.width();
-  const int h = display.height();
-  const int border = 2;
-  const int gap = 2;
-
-  const int x1 = x + border;
-  const int x2 = (w / 2) + (gap / 2);
-  const int y1 = y + border;
-  const int w1 = (w / 2) - (gap / 2) - border;
-  const int h1 = h - border * 2;
-
-  const int t1x = x1 + 7;
-  const int t1y = y1 + 7;
-  const int t2x = t1x;
-  const int t2y = y1 + h1 - 7;
-  const int t3x = x1 + w1 - 7;
-  const int t3y = y1 + (h1 / 2);
-
-  const int p1x = x2 + 7;
-  const int p1y = t1y;
-  const int p1w = 12;
-  const int p1h = t2y - t1y;
-  const int p2x = x2 + w1 - 12 - 7;
-  const int p2y = t1y;
-  const int p2w = 12;
-  const int p2h = t2y - t1y;
-
-
-  // play
-  display.fillScreen(BLACK);
-  display.fillRoundRect(x1, y1, w1, h1, 8, WHITE);
-  display.fillTriangle(t1x, t1y, t2x, t2y, t3x, t3y, RED);
-  delay(500);
-  // pause
-  display.fillRoundRect(x2, y1, w1, h1, 8, WHITE);
-  display.fillRoundRect(p1x, p1y, p1w, p1h, 5, GREEN);
-  display.fillRoundRect(p2x, p2y, p2w, p2h, 5, GREEN);
-  delay(500);
-  // play color
-  display.fillTriangle(t1x, t1y, t2x, t2y, t3x, t3y, BLUE);
-  delay(50);
-  // pause color
-  display.fillRoundRect(p1x, p1y, p1w, p1h, 5, RED);
-  display.fillRoundRect(p2x, p2y, p2w, p2h, 5, RED);
-  // play color
-  display.fillTriangle(t1x, t1y, t2x, t2y, t3x, t3y, GREEN);
-}
-
 
 void menu_setup() {
 
@@ -759,6 +728,11 @@ void menu_setup() {
   ms.set_root_menu(&mm);
   Serial.println("Menu initialised.");
 }
+
+
+/***************************************************
+  Menu Render
+ ****************************************************/
 
 void displayMenu(bool redraw) {
   static const byte lineHeight = 9;
@@ -841,7 +815,6 @@ void displayMenu(bool redraw) {
 
 }
 
-
 // Menu callback functions
 
 void on_item_selected(MenuItem* p_menu_item)
@@ -890,25 +863,25 @@ void on_display_moisture(MenuItem* p_menu_item)
 {
   on_item_selected(p_menu_item);
 
-  setViewMode(VIEWMODE_ROTARY);
+  setDefaultViewMode(VIEWMODE_MOISTURE);
 }
 void on_display_light(MenuItem* p_menu_item)
 {
   on_item_selected(p_menu_item);
 
-  setViewMode(VIEWMODE_ROTARY);
+  setDefaultViewMode(VIEWMODE_SENSORS);
 }
 void on_display_temperature(MenuItem* p_menu_item)
 {
   on_item_selected(p_menu_item);
 
-  setViewMode(VIEWMODE_ROTARY);
+  setDefaultViewMode(VIEWMODE_ROTARY);
 }
 void on_display_outputs(MenuItem* p_menu_item)
 {
   on_item_selected(p_menu_item);
 
-  setViewMode(VIEWMODE_ROTARY);
+  setDefaultViewMode(VIEWMODE_ROTARY);
 }
 
 void on_test_output1(MenuItem* p_menu_item)
@@ -947,4 +920,149 @@ void on_test_output6(MenuItem* p_menu_item)
 
   digitalWrite(out6, !digitalRead(out6));
 }
+
+
+
+/***************************************************
+  Ring Meter Mode
+ ****************************************************/
+
+void displayRingMeter() {
+
+
+  static long randNumber = random(100);
+  static int ringVal = 100;
+
+  static uint16_t tickerVar = -1;
+
+  unsigned long ms = millis();
+
+  static unsigned long d1 = 7000;
+  static unsigned long t1 = ms + d1 + 1;
+  if (ms - t1 > d1) {
+    t1 = ms;
+
+    ringVal = 0;
+
+    tickerVar += 1;
+    if (tickerVar > 12) tickerVar = 0;
+
+    display.fillRect(0, 0, 0x60, 10, BLACK, BLACK);
+    display.fillRect(0x20, 10, 0x20, 6, BLACK);
+
+    display.drawFastHLine(0,    10, 0x20, 0x528A); //0xD6BA);
+    display.drawFastHLine(0x20, 16, 0x20, 0x528A); //0xD6BA);
+    display.drawFastHLine(0x40, 10, 0x20, 0x528A); //0xD6BA);
+    display.drawFastVLine(0x1F, 10, 7,    0x528A); //0xD6BA);
+    display.drawFastVLine(0x40, 10, 7,    0x528A); //0xD6BA);
+
+    display.setCursor(0, 0);
+    display.setTextColor(WHITE);
+    display.setTextScale(1);
+    display.print(tickerVar);
+  }
+
+  static unsigned long t2 = ms;
+  if (ms - t2 > 500) {
+    t2 = ms;
+
+
+    ringVal -= 4;
+    if (ringVal < 0) {
+      ringVal += 100;
+    }
+
+    randNumber = random(100);
+
+    // Outer Ring
+    int r = 0x60 / 2 - 1;
+    display.ringMeter(randNumber, 0, 100,
+                      0x60 / 2 - r, 0x40 - r, r,
+                      tickerVar, BLACK, 90);
+    // lightgray 0xCE59
+    // darkgray 0x528A
+
+    display.fillRect(0x20, 0, 0x20, 16, BLACK);
+
+    display.setCursor(CENTER, 0);
+    display.setTextColor(0x528A, BLACK);
+    display.setTextScale(2);
+    display.print(randNumber);
+
+  }
+
+
+  static unsigned long t3 = ms;
+  if (ms - t3 > 30) {
+    t3 = ms;
+
+    // Inner Ring
+    int r = 15;
+    //    int pos = map(ms - t1, 0, d1, 0, 0xff);
+    //    uint16_t color = tft.colorInterpolation(0, 0xff, 0, 0xff, 0, 0, pos, 0xff);
+
+    display.ringMeter(ms - t1, d1, 0,
+                      0x60 / 2 - r, 0x40 - 2 * r, r,
+                      GREEN, RED);
+  }
+
+}
+
+
+
+/***************************************************
+  Notes - Not in use.
+ ****************************************************/
+
+void mediabuttons() {
+  const int x = 0;
+  const int y = 0;
+  const int w = display.width();
+  const int h = display.height();
+  const int border = 2;
+  const int gap = 2;
+
+  const int x1 = x + border;
+  const int x2 = (w / 2) + (gap / 2);
+  const int y1 = y + border;
+  const int w1 = (w / 2) - (gap / 2) - border;
+  const int h1 = h - border * 2;
+
+  const int t1x = x1 + 7;
+  const int t1y = y1 + 7;
+  const int t2x = t1x;
+  const int t2y = y1 + h1 - 7;
+  const int t3x = x1 + w1 - 7;
+  const int t3y = y1 + (h1 / 2);
+
+  const int p1x = x2 + 7;
+  const int p1y = t1y;
+  const int p1w = 12;
+  const int p1h = t2y - t1y;
+  const int p2x = x2 + w1 - 12 - 7;
+  const int p2y = t1y;
+  const int p2w = 12;
+  const int p2h = t2y - t1y;
+
+
+  // play
+  display.fillScreen(BLACK);
+  display.fillRoundRect(x1, y1, w1, h1, 8, WHITE);
+  display.fillTriangle(t1x, t1y, t2x, t2y, t3x, t3y, RED);
+  delay(500);
+  // pause
+  display.fillRoundRect(x2, y1, w1, h1, 8, WHITE);
+  display.fillRoundRect(p1x, p1y, p1w, p1h, 5, GREEN);
+  display.fillRoundRect(p2x, p2y, p2w, p2h, 5, GREEN);
+  delay(500);
+  // play color
+  display.fillTriangle(t1x, t1y, t2x, t2y, t3x, t3y, BLUE);
+  delay(50);
+  // pause color
+  display.fillRoundRect(p1x, p1y, p1w, p1h, 5, RED);
+  display.fillRoundRect(p2x, p2y, p2w, p2h, 5, RED);
+  // play color
+  display.fillTriangle(t1x, t1y, t2x, t2y, t3x, t3y, GREEN);
+}
+
 
