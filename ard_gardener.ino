@@ -39,17 +39,15 @@
 #define out4        5
 #define out5        6
 #define out6        7
-//#define out7        6
-//#define out8        7
 
 
 // SPI Hardware Pins: SPI: 10 (SS), 11 (MOSI), 12 (MISO), 13 (SCK). 
 #define dc   8
 #define rst  9
 #define ss   10
-#define mosi 11 // native h/w pins are fastest 
-#define miso 12 // native h/w pins are fastest
-#define sclk 13 // native h/w pins are fastest
+#define mosi 11 /* native h/w pins are fastest */
+#define miso 12 /* native h/w pins are fastest */
+#define sclk 13 /* native h/w pins are fastest */
 
 // I2C Pins: A4 A5
 // no definitions required.
@@ -119,11 +117,8 @@ typedef struct {
 #include <Adafruit_BMP085_U.h>
 #include "Chirp_Sensor_U.h"
 
-//// Menu
+// Menu
 #include <MenuSystem.h>
-
-// Menu variables
-MenuSystem ms;
 
 
 /*************************************************** 
@@ -144,6 +139,8 @@ Adafruit_MCP9808 tempsensor = Adafruit_MCP9808();
 Adafruit_BMP085_Unified bmp = Adafruit_BMP085_Unified(10085);
 Chirp_Sensor_Unified chirp = Chirp_Sensor_Unified(0x20);
 
+// Menu variables
+MenuSystem ms;
 
 
 /*************************************************** 
@@ -156,7 +153,8 @@ void setup(void) {
     Serial.println(">>>");
     Serial.println("Let's look after the plants!");
   }
-  
+
+  // Setup rotary encoder pins.
   if (rotaryPin1 ^ rotaryPin2 == A2 ^ A3) {
     // Native Interrupts for pins A2 and A3
     PCICR |= (1 << PCIE1);    // This enables Pin Change Interrupt 1 that covers the Analog input pins or Port C.
@@ -168,6 +166,8 @@ void setup(void) {
   }
   pinMode(okBtnPin, INPUT_PULLUP);
   pinMode(backBtnPin, INPUT_PULLUP);
+
+  // Setup output pins
   digitalWrite(out1, HIGH);
   pinMode(out1, OUTPUT);
   digitalWrite(out2, HIGH);
@@ -181,11 +181,14 @@ void setup(void) {
   digitalWrite(out6, HIGH);
   pinMode(out6, OUTPUT);
 
+  // Initialise software
   menu_setup();
-  
+
+  // Initialise hardware
   initDisplay(false);
   initSensors(false);
 
+  // Clear screen
   display.fillScreen(BLACK);
 }
 
@@ -269,11 +272,6 @@ bool setViewMode(viewmode_type_t newMode) {
   }
   return false;
 }
-
-//void onPinChangeInterrupt() {
-//  encoder.tick();
-//}
-//
 
 // The Interrupt Service Routine for Pin Change Interrupt 1
 // This routine will only be called on any signal change on A2 and A3: exactly where we need to check.
@@ -395,9 +393,9 @@ void initSensors(boolean showSummary) {
     display.print  ("Nom:"); display.println(sensor.name);
     display.print  ("Ver:"); display.println(sensor.version);
     display.print  ("ID: "); display.println(sensor.sensor_id);
-    display.print  ("Max:"); display.print(sensor.max_value); display.println(" hPa");
-    display.print  ("Min:"); display.print(sensor.min_value); display.println(" hPa");
-    display.print  ("Res:"); display.print(sensor.resolution); display.println(" hPa"); 
+    display.print  ("Max:"); display.print(sensor.max_value); display.println("%");
+    display.print  ("Min:"); display.print(sensor.min_value); display.println("%");
+    display.print  ("Res:"); display.print(sensor.resolution); display.println("%"); 
     delay(1500);
   }
 
@@ -410,7 +408,7 @@ void initSensors(boolean showSummary) {
   Loop Routines (Human Interface)
  ****************************************************/
 
-// Returns true if there is new HID activity.
+// Returns true if there is new Human Interface Device activity.
 boolean sampleHID(hid_input_t *hid_state) {
   // Local static variables.
   static char rotaryPosState = 0;

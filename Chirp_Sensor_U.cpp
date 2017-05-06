@@ -251,13 +251,13 @@ float Chirp_Sensor_Unified::calculateLux(uint16_t lightSensor) {
 /**************************************************************************/
 /*!
     @brief  Gets the most recent sensor event
-    returns true if sensor reading is between 0 and 65535 lux
+    returns true if sensor reading is between 0 and 65535 
     returns false if sensor is saturated
 */
 /**************************************************************************/
 bool Chirp_Sensor_Unified::getEvent(sensors_event_t *event)
 {
-  uint16_t capacitance, temperature, light;
+  uint16_t capacitance;
   
   /* Clear the event */
   memset(event, 0, sizeof(sensors_event_t));
