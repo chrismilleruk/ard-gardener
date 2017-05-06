@@ -211,7 +211,9 @@ void Chirp_Sensor_Unified::getCapacitance(uint16_t *capacitanceSensor) {
 }
 
 float Chirp_Sensor_Unified::calculateRelativeHumidity(uint16_t capacitance) {
-  return (float)(map(capacitance, 0, 810, 0, 10000)) / 100;
+  // Water = ~800
+  // Air = ~320
+  return (float)(map(capacitance, 300, 850, 0, 10000)) / 100;
 }
 
 void Chirp_Sensor_Unified::getTemperature(float *temperature) {

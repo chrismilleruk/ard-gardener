@@ -248,9 +248,15 @@ void loop() {
     boolean sendToDisplay = (viewMode == VIEWMODE_SENSORS);
 
     heartbeat();
-    sampleChirpSensor(sendToDisplay);
+    float moisture = sampleChirpSensor(sendToDisplay);
     sampleBCP180(sendToDisplay);
     sampleMCP9808(sendToDisplay);
+
+    if (moisture < 10) {
+      digitalWrite(out6, LOW);
+    } else {
+      digitalWrite(out6, HIGH);
+    }
   }
 }
 
@@ -493,7 +499,7 @@ void displayHidInputs(hid_input_t *hid_inputs) {
   Loop Routines (Sensors)
  ****************************************************/
  
-void sampleChirpSensor(boolean displaySensors) {
+float sampleChirpSensor(boolean displaySensors) {
   sensors_event_t event;
   chirp.getEvent(&event);
 
@@ -537,6 +543,8 @@ void sampleChirpSensor(boolean displaySensors) {
       display.println("");
     }
   }
+
+  return event.relative_humidity;
 }
 
 void sampleBCP180(boolean displaySensors) {
