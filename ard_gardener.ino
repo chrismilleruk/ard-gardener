@@ -5,8 +5,8 @@
   Chris Miller
  ****************************************************/
 
-//Sketch uses 29442 bytes (95%) of program storage space. Maximum is 30720 bytes.
-//Global variables use 1756 bytes (85%) of dynamic memory, leaving 292 bytes for local variables. Maximum is 2048 bytes.
+//Sketch uses 29172 bytes (94%) of program storage space. Maximum is 30720 bytes.
+//Global variables use 1742 bytes (85%) of dynamic memory, leaving 306 bytes for local variables. Maximum is 2048 bytes.
 //Low memory available, stability problems may occur.
 
 
@@ -20,7 +20,7 @@
 #define SerialSensors SerialOn && false
 #define SerialInputs  SerialOn && true
 
-#define MENU_TIMEOUT  6000
+#define MENU_TIMEOUT  10000
 #define LONG_PRESS    1000
 
 /***************************************************
@@ -84,7 +84,7 @@ typedef enum
   VIEWMODE_LIGHT    = 0x06
 } viewmode_type_t;
 
-viewmode_type_t viewDefault = VIEWMODE_SENSORS;
+viewmode_type_t viewDefault = VIEWMODE_MOISTURE;
 viewmode_type_t viewMode = VIEWMODE_SENSORS;
 unsigned long viewModeChanged = 0;
 
@@ -99,6 +99,16 @@ typedef struct {
   boolean okLongPress;
   boolean backLongPress;
 } hid_input_t;
+
+
+/** struct ring_data contains the data for a ring. */
+typedef struct {
+  int val;
+  int min;
+  int max;
+  uint16_t colorScheme;
+  uint16_t backColor;
+} ring_data_t;
 
 
 
@@ -137,7 +147,7 @@ typedef struct {
 // Option 2: must use the hardware SPI pins
 //Adafruit_SSD1331 display = Adafruit_SSD1331(ss, dc, rst);
 // Option 3: use the Sumotoy SSD driver (fast)!
-SSD_13XX display = SSD_13XX(ss, dc);
+SSD_13XX display = SSD_13XX(ss, dc, rst);
 
 // Create RotaryEncoder:
 RotaryEncoder encoder(rotaryPin1, rotaryPin2);
@@ -156,10 +166,6 @@ MenuSystem ms;
  ****************************************************/
 
 void setup(void) {
-  // Reset Pin
-  digitalWrite(rst, HIGH);
-  pinMode(rst, OUTPUT);
-
   if (SerialOn) {
     Serial.begin(SerialSpeed);
     Serial.println(">>>");
@@ -261,13 +267,17 @@ void loop() {
   }
 
   // Sensor Sampling
+  static float moisture = 50;
+  static ring_data_t moisture_ring;
+
   static unsigned long lastSensorLoop = 0;
   if (currentMillis - lastSensorLoop > 1000) {
     lastSensorLoop = currentMillis;
     boolean sendToDisplay = (viewMode == VIEWMODE_SENSORS);
 
     if (sendToDisplay) heartbeat();
-    float moisture = sampleChirpSensor(sendToDisplay);
+    moisture = sampleChirpSensor(sendToDisplay);
+    
     sampleBCP180(sendToDisplay);
     sampleMCP9808(sendToDisplay);
 
@@ -277,12 +287,16 @@ void loop() {
       digitalWrite(out6, HIGH);
     }
   }
-
   
   if (viewMode == VIEWMODE_MOISTURE) {
-    displayRingMeter();
-  }
+    moisture_ring.val = (int)moisture;
+    moisture_ring.min = 0;
+    moisture_ring.max = 100;
+    moisture_ring.colorScheme = BLUE;
+    moisture_ring.backColor = BLACK;
 
+    displayRingMeter(&moisture_ring);
+  }
 }
 
 bool setDefaultViewMode(viewmode_type_t newMode) {
@@ -314,339 +328,6 @@ ISR(PCINT1_vect) {
 
 
 
-/***************************************************
-  Setup Routines
- ****************************************************/
-
-
-void initDisplay(boolean runQuickTest) {
-  // Set up display
-  display.begin();
-  display.setRotation(2);
-
-  if (runQuickTest) {
-    // Run display checks
-    if (SerialOn) {
-      Serial.println("Quick Display Test");
-    }
-
-    uint16_t time = millis();
-    display.fillScreen(RED);
-    display.fillScreen(BLUE);
-    display.fillScreen(GREEN);
-    display.fillScreen(BLACK);
-    time = millis() - time;
-
-    if (SerialOn) {
-      Serial.print("-- complete ");
-      Serial.print(time, DEC);
-      Serial.println("ms");
-    }
-
-    //    printTimeTaken(time);
-    display.setCursor(5, 10);
-    display.setTextColor(BLUE);
-    display.setTextScale(2);
-    display.print(time);
-    display.print("ms");
-
-    delay(600);
-  }
-
-  display.fillScreen(BLACK);
-}
-
-void initSensors(boolean showSummary) {
-
-  /* Initialise the MCP9808 sensor */
-  if (!tempsensor.begin()) {
-    if (SerialOn) Serial.println("Couldn't find MCP9808!");
-
-    display.fillScreen(BLACK);
-    display.setTextScale(1);
-    display.setTextColor(RED);
-    display.setCursor(0, 0);
-    display.print("Couldn't find MCP9808!");
-    while (1);
-  }
-
-  /* Initialise the BCP180 sensor */
-  if (!bmp.begin())
-  {
-    /* There was a problem detecting the BMP085 ... check your connections */
-    if (SerialOn) Serial.print("Ooops, no BMP085 detected ... Check your wiring or I2C ADDR!");
-
-    display.fillScreen(BLACK);
-    display.setTextScale(1);
-    display.setTextColor(RED);
-    display.setCursor(0, 0);
-    display.print("Ooops, no BMP085 detected ... Check your wiring or I2C ADDR!");
-    while (1);
-  }
-
-  if (!chirp.begin())
-  {
-    /* There was a problem detecting the Chirp */
-    if (SerialOn) Serial.print("Ooops, no Chirp detected ... Check your wiring or I2C ADDR!");
-
-    display.fillScreen(BLACK);
-    display.setTextScale(1);
-    display.setTextColor(RED);
-    display.setCursor(0, 0);
-    display.print("Ooops, no Chirp detected ... Check your wiring or I2C ADDR!");
-    while (1);
-  }
-
-  if (showSummary) {
-    // For universal sensors.
-    sensor_t sensor;
-
-    /* Show some BCP180 stats */
-    bmp.getSensor(&sensor);
-    display.fillScreen(BLACK);
-    display.setCursor(0, 0);
-    display.setTextScale(1);
-    display.setTextColor(GRAY);
-    display.print  ("Nom:"); display.println(sensor.name);
-    display.print  ("Ver:"); display.println(sensor.version);
-    display.print  ("ID: "); display.println(sensor.sensor_id);
-    display.print  ("Max:"); display.print(sensor.max_value); display.println(" hPa");
-    display.print  ("Min:"); display.print(sensor.min_value); display.println(" hPa");
-    display.print  ("Res:"); display.print(sensor.resolution); display.println(" hPa");
-    delay(1500);
-
-    /* Show some Chirp stats */
-    chirp.getSensor(&sensor);
-    display.fillScreen(BLACK);
-    display.setCursor(0, 0);
-    display.setTextScale(1);
-    display.setTextColor(GRAY);
-    display.print  ("Nom:"); display.println(sensor.name);
-    display.print  ("Ver:"); display.println(sensor.version);
-    display.print  ("ID: "); display.println(sensor.sensor_id);
-    display.print  ("Max:"); display.print(sensor.max_value); display.println("%");
-    display.print  ("Min:"); display.print(sensor.min_value); display.println("%");
-    display.print  ("Res:"); display.print(sensor.resolution); display.println("%");
-    delay(1500);
-  }
-
-}
-
-
-
-
-/***************************************************
-  Loop Routines (Human Interface)
- ****************************************************/
-
-// Returns true if there is new Human Interface Device activity.
-boolean sampleHID(hid_input_t *hid_state) {
-  // Local static variables.
-  static char rotaryPosState = 0;
-  static boolean okPressState = 0;
-  static boolean okLongPressState = 0;
-  static unsigned long okPressStart = 0;
-  static boolean backPressState = 0;
-  static boolean backLongPressState = 0;
-  static unsigned long backPressStart = 0;
-
-  // Local variables.
-  int currentMillis = millis();
-  boolean changed = false;
-  int rotaryPos = encoder.getPosition();
-  int okButton = digitalRead(okBtnPin);
-  int backButton = digitalRead(backBtnPin);
-
-  hid_state->rotaryDelta = 0;
-  if (rotaryPosState != rotaryPos) {
-    changed = true;
-    hid_state->rotaryDelta = rotaryPos - rotaryPosState;
-    rotaryPosState = rotaryPos;
-  }
-
-  hid_state->active = changed;
-
-  processButtonPress(
-    (okButton == LOW), currentMillis,
-    &okPressState, &okPressStart, &okLongPressState, &changed);
-
-  processButtonPress(
-    (backButton == LOW), currentMillis,
-    &backPressState, &backPressStart, &backLongPressState, &changed);
-
-  hid_state->active |= okPressState | backPressState;
-  hid_state->changed = changed;
-  hid_state->rotaryPos = rotaryPosState;
-  hid_state->okPress = okPressState;
-  hid_state->backPress = backPressState;
-  hid_state->okLongPress = okLongPressState;
-  hid_state->backLongPress = backLongPressState;
-
-  return hid_state->active;
-}
-
-void processButtonPress(boolean btnPressed, unsigned long currentMillis,
-                        boolean *pressState, unsigned long *longPressStart,
-                        boolean *longPressState, boolean *changed)
-{
-  if (*pressState != btnPressed) {
-    *changed = true;
-    *pressState = btnPressed;
-    *longPressStart = btnPressed ? currentMillis : 0;
-  }
-  boolean longPress = (btnPressed && currentMillis - *longPressStart > LONG_PRESS);
-  if (*longPressState != longPress) {
-    *changed = true;
-    *longPressState = longPress;
-  }
-}
-
-void displayHidInputs(hid_input_t *hid_inputs) {
-  display.setCursor(0, 18);
-  display.setTextColor(MAGENTA, BLACK);
-  display.setTextScale(3);
-  display.print(hid_inputs->rotaryPos);
-  display.print(" ");
-
-  if (hid_inputs->okLongPress) {
-    plotSymbol(2, 7, WHITE, BLACK, false);
-  } else if (hid_inputs->okPress) {
-    plotSymbol(2, 7, BLUE, BLACK, false);
-  } else {
-    plotSymbol(2, 9, BLUE, BLACK, false);
-  }
-
-  if (hid_inputs->backLongPress) {
-    plotSymbol(3, 7, WHITE, BLACK, false);
-  } else if (hid_inputs->backPress) {
-    plotSymbol(3, 7, BLUE, BLACK, false);
-  } else {
-    plotSymbol(3, 9, BLUE, BLACK, false);
-  }
-}
-
-/***************************************************
-  Loop Routines (Sensors)
- ****************************************************/
-
-float sampleChirpSensor(boolean displaySensors) {
-  sensors_event_t event;
-  chirp.getEvent(&event);
-
-  if (event.relative_humidity) {
-
-    float chirpTemperature;
-    chirp.getTemperature(&chirpTemperature);
-
-    float light;
-    chirp.getLight(&light);
-
-    if (SerialSensors) {
-      Serial.print("Chirp:\t");
-      Serial.print(event.relative_humidity);
-      Serial.print("%\t");
-      Serial.print(chirpTemperature);
-      Serial.print("*C\t");
-      Serial.print(light);
-      Serial.println("lux");
-    }
-
-    if (displaySensors) {
-      display.setTextColor(RED, BLACK);
-      display.setTextScale(1);
-
-      display.setCursor(0, 0);
-
-      /* Display humidity */
-      display.print("Hum:");
-      display.print(event.relative_humidity);
-      display.println("%");
-
-      /* Display temperature in C */
-      display.print("Temp:");
-      display.print(chirpTemperature);
-      display.println("C");
-
-      /* Display temperature in C */
-      display.print("Lux:");
-      display.print(light);
-      display.println("");
-    }
-  }
-
-  return event.relative_humidity;
-}
-
-void sampleBCP180(boolean displaySensors) {
-
-  // BCP180
-  sensors_event_t event;
-  bmp.getEvent(&event);
-
-  /* Display the results (barometric pressure is measure in hPa) */
-  if (event.pressure)
-  {
-    if (displaySensors) {
-      display.setTextColor(GRAY, BLACK);
-      display.setTextScale(1);
-
-      display.setCursor(0, 24);
-
-      /* Display atmospheric pressue in hPa */
-      display.print("Pres:");
-      display.print(event.pressure);
-      display.println(" hPa");
-    }
-
-    /* First we get the current temperature from the BMP085 */
-    float temperature;
-    bmp.getTemperature(&temperature);
-
-    /* Then convert the atmospheric pressure, and SLP to altitude         */
-    /* Update this next line with the current SLP for better results      */
-    float seaLevelPressure =  1011.3; //SENSORS_PRESSURE_SEALEVELHPA;
-
-    float altitude = bmp.pressureToAltitude(seaLevelPressure, event.pressure);
-
-    if (displaySensors) {
-      display.print("Temp:");
-      display.print(temperature);
-      display.println(" C");
-
-      display.print("Alt: ");
-      display.print(altitude);
-      display.println(" m");
-    }
-
-    if (SerialSensors) {
-      Serial.print("BCP180:\t");
-      Serial.print(event.pressure); Serial.print("hPa\t");
-      Serial.print(temperature); Serial.println("*C");
-    }
-  }
-
-}
-
-void sampleMCP9808(boolean displaySensors) {
-  // MCP9808
-  // Read and print out the temperature, then convert to *F
-  float c = tempsensor.readTempC();
-  float f = c * 9.0 / 5.0 + 32;
-
-  if (SerialSensors) {
-    Serial.print("MCP9808:\t");
-    Serial.print(c); Serial.print("*C\t");
-    Serial.print(f); Serial.println("*F");
-  }
-
-  if (displaySensors) {
-    display.setTextColor(YELLOW, BLACK);
-    display.setTextScale(1);
-    display.setCursor(0, 48); display.print("Temp:");
-    display.setCursor(48, 48); display.print(c); display.write(9); display.print("C");
-    display.setCursor(48, 56); display.print(f); display.write(9); display.println("F");
-  }
-}
 
 void heartbeat() {
   static boolean heartbeat_toggle = false;
@@ -681,331 +362,6 @@ void plotSymbol(char pos, char ch, uint16_t fgColor, uint16_t bgColor, boolean f
   display.setTextColor(fgColor);
 
   display.write(ch);
-}
-
-
-/***************************************************
-  Menu Definition
- ****************************************************/
-
-void menu_setup() {
-
-  static Menu mm("Settings");
-  static MenuItem mm_mi1("Demo Item 1");
-  static MenuItem mm_mi2("Demo Item 2");
-  static MenuItem mm_mi3("Demo Item 3");
-  mm.add_item(&mm_mi1, &on_item1_selected);
-  mm.add_item(&mm_mi2, &on_item2_selected);
-  mm.add_item(&mm_mi3, &on_item3_selected);
-
-  static Menu mu1("Display");
-  static MenuItem mu1_mi1("Moisture");
-  static MenuItem mu1_mi2("Light");
-  static MenuItem mu1_mi3("Temperature");
-  static MenuItem mu1_mi4("Outputs");
-  mm.add_menu(&mu1);
-  mu1.add_item(&mu1_mi1, &on_display_moisture);
-  mu1.add_item(&mu1_mi2, &on_display_light);
-  mu1.add_item(&mu1_mi3, &on_display_temperature);
-  mu1.add_item(&mu1_mi4, &on_display_outputs);
-
-  static Menu mu2("Test Outputs");
-  static MenuItem mu2_mi1("Output 1");
-  static MenuItem mu2_mi2("Output 2");
-  static MenuItem mu2_mi3("Output 3");
-  static MenuItem mu2_mi4("Output 4");
-  static MenuItem mu2_mi5("Output 5");
-  static MenuItem mu2_mi6("Output 6");
-  mm.add_menu(&mu2);
-  mu2.add_item(&mu2_mi1, &on_test_output1);
-  mu2.add_item(&mu2_mi2, &on_test_output2);
-  mu2.add_item(&mu2_mi3, &on_test_output3);
-  mu2.add_item(&mu2_mi4, &on_test_output4);
-  mu2.add_item(&mu2_mi5, &on_test_output5);
-  mu2.add_item(&mu2_mi6, &on_test_output6);
-
-  // Menu setup
-  ms.set_root_menu(&mm);
-  Serial.println("Menu initialised.");
-}
-
-
-/***************************************************
-  Menu Render
- ****************************************************/
-
-void displayMenu(bool redraw) {
-  static const byte lineHeight = 9;
-  static const byte lineSelected = 3;
-  static const byte numBefore = lineSelected - 2;
-  static const byte numAfter = 5 - lineSelected;
-
-  static byte previousIndex = -1;
-
-  // Display the menu
-  Menu const* cp_menu = ms.get_current_menu();
-  Menu const* cp_parent = cp_menu->get_parent();
-  MenuComponent const* cp_menu_sel = cp_menu->get_selected();
-  byte cp_menu_sel_idx = cp_menu->get_cur_menu_component_num();
-  byte cp_menu_num_items = cp_menu->get_num_menu_components();
-
-  Serial.print(cp_menu->get_name());
-  Serial.print("-");
-  Serial.print(cp_menu_sel->get_name());
-  Serial.print("  -  ");
-  Serial.println(redraw);
-
-  display.setTextColor(BLUE, BLACK);
-  display.setTextScale(1);
-
-  if (redraw) {
-
-    display.fillScreen(BLACK);
-
-    // Menu title
-    display.setTextColor(BLUE, BLACK);
-    display.setCursor(0, lineHeight * 1);
-    display.println(cp_menu->get_name());
-
-    // Parent menu.
-    display.setTextColor(GRAY, BLACK);
-    display.setCursor(0, lineHeight * 0);
-    if (cp_parent != NULL) {
-      display.print("<<");
-      display.println(cp_parent->get_name());
-    } else {
-      display.println("               ");
-    }
-  }
-
-  if (redraw || previousIndex != cp_menu_sel_idx) {
-    previousIndex = cp_menu_sel_idx;
-
-    // Selected item.
-    display.setTextColor(BLUE, BLACK);
-    display.setCursor(0, lineHeight * lineSelected);
-    display.print(cp_menu->get_selected()->get_name());
-    display.println("               ");
-
-    // Switch to Gray pen.
-    display.setTextColor(GRAY, BLACK);
-
-    // Preceding items.
-    int lineOffset = lineSelected - cp_menu_sel_idx;
-    for (int i = cp_menu_sel_idx - numBefore; i < cp_menu_sel_idx; ++i) {
-      display.setCursor(0, lineHeight * (lineOffset + i));
-      if (i >= 0) {
-        MenuComponent const* cp_m_comp = cp_menu->get_menu_component(i);
-        display.print(cp_m_comp->get_name());
-      }
-      display.println("               ");
-    }
-
-    // Following items.
-    for (int i = cp_menu_sel_idx + 1; i <= cp_menu_sel_idx + numAfter; ++i) {
-      display.setCursor(0, lineHeight * (lineOffset + i));
-      if (i < cp_menu_num_items) {
-        MenuComponent const* cp_m_comp = cp_menu->get_menu_component(i);
-        display.print(cp_m_comp->get_name());
-      }
-      display.println("               ");
-    }
-
-  }
-
-}
-
-// Menu callback functions
-
-void on_item_selected(MenuItem* p_menu_item)
-{
-  display.setTextColor(RED, BLACK);
-  display.setTextScale(1);
-  display.setCursor(0, 56);
-  display.print(p_menu_item->get_name());
-  display.print(" selected");
-}
-
-void on_item1_selected(MenuItem* p_menu_item)
-{
-  on_item_selected(p_menu_item);
-
-  display.setTextColor(RED, BLACK);
-  display.setTextScale(1);
-  display.setCursor(0, 18);
-  display.print("Item1 Selected  ");
-  //  delay(1500); // so we can look the result on the LCD
-}
-
-void on_item2_selected(MenuItem* p_menu_item)
-{
-  on_item_selected(p_menu_item);
-
-  display.setTextColor(RED, BLACK);
-  display.setTextScale(1);
-  display.setCursor(0, 18);
-  display.print("Item2 Selected  ");
-  //  delay(1500); // so we can look the result on the LCD
-}
-
-void on_item3_selected(MenuItem* p_menu_item)
-{
-  on_item_selected(p_menu_item);
-
-  display.setTextColor(RED, BLACK);
-  display.setTextScale(1);
-  display.setCursor(0, 18);
-  display.print("Item3 Selected  ");
-  //  delay(1500); // so we can look the result on the LCD
-}
-
-void on_display_moisture(MenuItem* p_menu_item)
-{
-  on_item_selected(p_menu_item);
-
-  setDefaultViewMode(VIEWMODE_MOISTURE);
-}
-void on_display_light(MenuItem* p_menu_item)
-{
-  on_item_selected(p_menu_item);
-
-  setDefaultViewMode(VIEWMODE_SENSORS);
-}
-void on_display_temperature(MenuItem* p_menu_item)
-{
-  on_item_selected(p_menu_item);
-
-  setDefaultViewMode(VIEWMODE_ROTARY);
-}
-void on_display_outputs(MenuItem* p_menu_item)
-{
-  on_item_selected(p_menu_item);
-
-  setDefaultViewMode(VIEWMODE_ROTARY);
-}
-
-void on_test_output1(MenuItem* p_menu_item)
-{
-  on_item_selected(p_menu_item);
-
-  digitalWrite(out1, !digitalRead(out1));
-}
-void on_test_output2(MenuItem* p_menu_item)
-{
-  on_item_selected(p_menu_item);
-
-  digitalWrite(out2, !digitalRead(out2));
-}
-void on_test_output3(MenuItem* p_menu_item)
-{
-  on_item_selected(p_menu_item);
-
-  digitalWrite(out3, !digitalRead(out3));
-}
-void on_test_output4(MenuItem* p_menu_item)
-{
-  on_item_selected(p_menu_item);
-
-  digitalWrite(out4, !digitalRead(out4));
-}
-void on_test_output5(MenuItem* p_menu_item)
-{
-  on_item_selected(p_menu_item);
-
-  digitalWrite(out5, !digitalRead(out5));
-}
-void on_test_output6(MenuItem* p_menu_item)
-{
-  on_item_selected(p_menu_item);
-
-  digitalWrite(out6, !digitalRead(out6));
-}
-
-
-
-/***************************************************
-  Ring Meter Mode
- ****************************************************/
-
-void displayRingMeter() {
-
-
-  static long randNumber = random(100);
-  static int ringVal = 100;
-
-  static uint16_t tickerVar = -1;
-
-  unsigned long ms = millis();
-
-  static unsigned long d1 = 7000;
-  static unsigned long t1 = ms + d1 + 1;
-  if (ms - t1 > d1) {
-    t1 = ms;
-
-    ringVal = 0;
-
-    tickerVar += 1;
-    if (tickerVar > 12) tickerVar = 0;
-
-    display.fillRect(0, 0, 0x60, 10, BLACK, BLACK);
-    display.fillRect(0x20, 10, 0x20, 6, BLACK);
-
-    display.drawFastHLine(0,    10, 0x20, 0x528A); //0xD6BA);
-    display.drawFastHLine(0x20, 16, 0x20, 0x528A); //0xD6BA);
-    display.drawFastHLine(0x40, 10, 0x20, 0x528A); //0xD6BA);
-    display.drawFastVLine(0x1F, 10, 7,    0x528A); //0xD6BA);
-    display.drawFastVLine(0x40, 10, 7,    0x528A); //0xD6BA);
-
-    display.setCursor(0, 0);
-    display.setTextColor(WHITE);
-    display.setTextScale(1);
-    display.print(tickerVar);
-  }
-
-  static unsigned long t2 = ms;
-  if (ms - t2 > 500) {
-    t2 = ms;
-
-
-    ringVal -= 4;
-    if (ringVal < 0) {
-      ringVal += 100;
-    }
-
-    randNumber = random(100);
-
-    // Outer Ring
-    int r = 0x60 / 2 - 1;
-    display.ringMeter(randNumber, 0, 100,
-                      0x60 / 2 - r, 0x40 - r, r,
-                      tickerVar, BLACK, 90);
-    // lightgray 0xCE59
-    // darkgray 0x528A
-
-    display.fillRect(0x20, 0, 0x20, 16, BLACK);
-
-    display.setCursor(CENTER, 0);
-    display.setTextColor(0x528A, BLACK);
-    display.setTextScale(2);
-    display.print(randNumber);
-
-  }
-
-
-  static unsigned long t3 = ms;
-  if (ms - t3 > 30) {
-    t3 = ms;
-
-    // Inner Ring
-    int r = 15;
-    //    int pos = map(ms - t1, 0, d1, 0, 0xff);
-    //    uint16_t color = tft.colorInterpolation(0, 0xff, 0, 0xff, 0, 0, pos, 0xff);
-
-    display.ringMeter(ms - t1, d1, 0,
-                      0x60 / 2 - r, 0x40 - 2 * r, r,
-                      GREEN, RED);
-  }
-
 }
 
 
