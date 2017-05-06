@@ -1,12 +1,12 @@
 
-/*************************************************** 
+/***************************************************
   This is a sketch to help water the plants.
 
   Chris Miller
  ****************************************************/
 
- 
-/*************************************************** 
+
+/***************************************************
   Configuration Settings
  ****************************************************/
 
@@ -18,12 +18,12 @@
 
 #define MENU_TIMEOUT  6000
 #define LONG_PRESS    1000
-  
-/*************************************************** 
+
+/***************************************************
   Pin Definitions
  ****************************************************/
 
- 
+
 // Input Pins:
 #define rotaryPin1  A2
 #define rotaryPin2  A3
@@ -31,7 +31,7 @@
 #define backBtnPin  A1
 
 
-// Output Pins: 
+// Output Pins:
 #define outputCount 6
 #define out1        2
 #define out2        3
@@ -41,7 +41,7 @@
 #define out6        7
 
 
-// SPI Hardware Pins: SPI: 10 (SS), 11 (MOSI), 12 (MISO), 13 (SCK). 
+// SPI Hardware Pins: SPI: 10 (SS), 11 (MOSI), 12 (MISO), 13 (SCK).
 #define dc   8
 #define rst  9
 #define ss   10
@@ -53,10 +53,10 @@
 // no definitions required.
 
 
-/*************************************************** 
+/***************************************************
   Other Definitions
  ****************************************************/
- 
+
 // Color definitions
 #define BLACK           0x0000
 #define BLUE            0x001F
@@ -64,7 +64,7 @@
 #define GREEN           0x07E0
 #define CYAN            0x07FF
 #define MAGENTA         0xF81F
-#define YELLOW          0xFFE0  
+#define YELLOW          0xFFE0
 #define WHITE           0xFFFF
 #define GRAY            0xCCCC
 
@@ -85,22 +85,22 @@ unsigned long viewModeChanged = 0;
 
 /** struct hid_input is used to represent the input controls in a common format. */
 typedef struct {
-    boolean active;
-    boolean changed;
-    int8_t rotaryPos;
-    int8_t rotaryDelta;
-    boolean okPress;
-    boolean backPress;
-    boolean okLongPress;
-    boolean backLongPress;
+  boolean active;
+  boolean changed;
+  int8_t rotaryPos;
+  int8_t rotaryDelta;
+  boolean okPress;
+  boolean backPress;
+  boolean okLongPress;
+  boolean backLongPress;
 } hid_input_t;
 
 
 
-/*************************************************** 
+/***************************************************
   Library Includes
  ****************************************************/
- 
+
 // SPI Graphics
 #include <SPI.h>
 #include <Adafruit_GFX.h>
@@ -121,14 +121,14 @@ typedef struct {
 #include <MenuSystem.h>
 
 
-/*************************************************** 
+/***************************************************
   Globals
  ****************************************************/
 
 // Create the Display
 // Option 1: use any pins but a little slower
-//Adafruit_SSD1331 display = Adafruit_SSD1331(ss, dc, mosi, sclk, rst);  
-// Option 2: must use the hardware SPI pins 
+//Adafruit_SSD1331 display = Adafruit_SSD1331(ss, dc, mosi, sclk, rst);
+// Option 2: must use the hardware SPI pins
 Adafruit_SSD1331 display = Adafruit_SSD1331(ss, dc, rst);
 
 // Create RotaryEncoder:
@@ -143,10 +143,10 @@ Chirp_Sensor_Unified chirp = Chirp_Sensor_Unified(0x20);
 MenuSystem ms;
 
 
-/*************************************************** 
+/***************************************************
   Setup & Loop
  ****************************************************/
- 
+
 void setup(void) {
   if (SerialOn) {
     Serial.begin(SerialSpeed);
@@ -223,7 +223,7 @@ void loop() {
     if (viewMode == VIEWMODE_ROTARY && hid_inputs.changed) {
       displayHidInputs(&hid_inputs);
     }
-    
+
     if (viewMode == VIEWMODE_MENU && hid_inputs.changed) {
       if (hid_inputs.rotaryDelta > 0) {
         if (ms.next()) displayMenu(false);
@@ -240,7 +240,7 @@ void loop() {
           displayMenu(true);
         }
       }
-      
+
     }
   }
 
@@ -283,10 +283,10 @@ ISR(PCINT1_vect) {
 
 
 
-/*************************************************** 
+/***************************************************
   Setup Routines
  ****************************************************/
- 
+
 
 void initDisplay(boolean runQuickTest) {
   // Set up display
@@ -298,7 +298,7 @@ void initDisplay(boolean runQuickTest) {
     if (SerialOn) {
       Serial.println("Quick Display Test");
     }
-    
+
     uint16_t time = millis();
     display.fillScreen(RED);
     display.fillScreen(BLUE);
@@ -311,69 +311,69 @@ void initDisplay(boolean runQuickTest) {
       Serial.print(time, DEC);
       Serial.println("ms");
     }
-    
-//    printTimeTaken(time);
+
+    //    printTimeTaken(time);
     display.setCursor(5, 10);
     display.setTextColor(BLUE);
     display.setTextSize(2);
     display.print(time);
     display.print("ms");
-    
+
     delay(600);
   }
-  
+
   display.fillScreen(BLACK);
 }
 
 void initSensors(boolean showSummary) {
-  
+
   /* Initialise the MCP9808 sensor */
   if (!tempsensor.begin()) {
     if (SerialOn) Serial.println("Couldn't find MCP9808!");
-    
+
     display.fillScreen(BLACK);
     display.setTextSize(1);
     display.setTextColor(RED);
-    display.setCursor(0,0);
+    display.setCursor(0, 0);
     display.print("Couldn't find MCP9808!");
     while (1);
   }
 
   /* Initialise the BCP180 sensor */
-  if(!bmp.begin())
+  if (!bmp.begin())
   {
     /* There was a problem detecting the BMP085 ... check your connections */
     if (SerialOn) Serial.print("Ooops, no BMP085 detected ... Check your wiring or I2C ADDR!");
-    
+
     display.fillScreen(BLACK);
     display.setTextSize(1);
     display.setTextColor(RED);
-    display.setCursor(0,0);
+    display.setCursor(0, 0);
     display.print("Ooops, no BMP085 detected ... Check your wiring or I2C ADDR!");
-    while(1);
+    while (1);
   }
 
   if (!chirp.begin())
   {
     /* There was a problem detecting the Chirp */
     if (SerialOn) Serial.print("Ooops, no Chirp detected ... Check your wiring or I2C ADDR!");
-    
+
     display.fillScreen(BLACK);
     display.setTextSize(1);
     display.setTextColor(RED);
-    display.setCursor(0,0);
+    display.setCursor(0, 0);
     display.print("Ooops, no Chirp detected ... Check your wiring or I2C ADDR!");
-    while(1);
+    while (1);
   }
 
   if (showSummary) {
     // For universal sensors.
     sensor_t sensor;
-    
+
     /* Show some BCP180 stats */
     bmp.getSensor(&sensor);
     display.fillScreen(BLACK);
-    display.setCursor(0,0);
+    display.setCursor(0, 0);
     display.setTextSize(1);
     display.setTextColor(GRAY);
     display.print  ("Nom:"); display.println(sensor.name);
@@ -381,13 +381,13 @@ void initSensors(boolean showSummary) {
     display.print  ("ID: "); display.println(sensor.sensor_id);
     display.print  ("Max:"); display.print(sensor.max_value); display.println(" hPa");
     display.print  ("Min:"); display.print(sensor.min_value); display.println(" hPa");
-    display.print  ("Res:"); display.print(sensor.resolution); display.println(" hPa"); 
+    display.print  ("Res:"); display.print(sensor.resolution); display.println(" hPa");
     delay(1500);
-  
+
     /* Show some Chirp stats */
     chirp.getSensor(&sensor);
     display.fillScreen(BLACK);
-    display.setCursor(0,0);
+    display.setCursor(0, 0);
     display.setTextSize(1);
     display.setTextColor(GRAY);
     display.print  ("Nom:"); display.println(sensor.name);
@@ -395,7 +395,7 @@ void initSensors(boolean showSummary) {
     display.print  ("ID: "); display.println(sensor.sensor_id);
     display.print  ("Max:"); display.print(sensor.max_value); display.println("%");
     display.print  ("Min:"); display.print(sensor.min_value); display.println("%");
-    display.print  ("Res:"); display.print(sensor.resolution); display.println("%"); 
+    display.print  ("Res:"); display.print(sensor.resolution); display.println("%");
     delay(1500);
   }
 
@@ -404,7 +404,7 @@ void initSensors(boolean showSummary) {
 
 
 
-/*************************************************** 
+/***************************************************
   Loop Routines (Human Interface)
  ****************************************************/
 
@@ -432,7 +432,7 @@ boolean sampleHID(hid_input_t *hid_state) {
     hid_state->rotaryDelta = rotaryPos - rotaryPosState;
     rotaryPosState = rotaryPos;
   }
-  
+
   hid_state->active = changed;
 
   processButtonPress(
@@ -450,12 +450,13 @@ boolean sampleHID(hid_input_t *hid_state) {
   hid_state->backPress = backPressState;
   hid_state->okLongPress = okLongPressState;
   hid_state->backLongPress = backLongPressState;
-  
+
   return hid_state->active;
 }
 
-void processButtonPress(boolean btnPressed, unsigned long currentMillis, 
-  boolean *pressState, unsigned long *longPressStart, boolean *longPressState, boolean *changed)
+void processButtonPress(boolean btnPressed, unsigned long currentMillis,
+                        boolean *pressState, unsigned long *longPressStart,
+                        boolean *longPressState, boolean *changed)
 {
   if (*pressState != btnPressed) {
     *changed = true;
@@ -470,33 +471,33 @@ void processButtonPress(boolean btnPressed, unsigned long currentMillis,
 }
 
 void displayHidInputs(hid_input_t *hid_inputs) {
-      display.setCursor(0, 18);
-      display.setTextColor(MAGENTA, BLACK);
-      display.setTextSize(3);
-      display.print(hid_inputs->rotaryPos);
-      display.print(" ");
+  display.setCursor(0, 18);
+  display.setTextColor(MAGENTA, BLACK);
+  display.setTextSize(3);
+  display.print(hid_inputs->rotaryPos);
+  display.print(" ");
 
-      if (hid_inputs->okLongPress) {
-        plotSymbol(2, 7, WHITE, BLACK, false);
-      } else if (hid_inputs->okPress) {
-        plotSymbol(2, 7, BLUE, BLACK, false);
-      } else {
-        plotSymbol(2, 9, BLUE, BLACK, false);
-      }
-      
-      if (hid_inputs->backLongPress) {
-        plotSymbol(3, 7, WHITE, BLACK, false);
-      } else if (hid_inputs->backPress) {
-        plotSymbol(3, 7, BLUE, BLACK, false);
-      } else {
-        plotSymbol(3, 9, BLUE, BLACK, false);
-      }
+  if (hid_inputs->okLongPress) {
+    plotSymbol(2, 7, WHITE, BLACK, false);
+  } else if (hid_inputs->okPress) {
+    plotSymbol(2, 7, BLUE, BLACK, false);
+  } else {
+    plotSymbol(2, 9, BLUE, BLACK, false);
+  }
+
+  if (hid_inputs->backLongPress) {
+    plotSymbol(3, 7, WHITE, BLACK, false);
+  } else if (hid_inputs->backPress) {
+    plotSymbol(3, 7, BLUE, BLACK, false);
+  } else {
+    plotSymbol(3, 9, BLUE, BLACK, false);
+  }
 }
 
-/*************************************************** 
+/***************************************************
   Loop Routines (Sensors)
  ****************************************************/
- 
+
 float sampleChirpSensor(boolean displaySensors) {
   sensors_event_t event;
   chirp.getEvent(&event);
@@ -505,10 +506,10 @@ float sampleChirpSensor(boolean displaySensors) {
 
     float chirpTemperature;
     chirp.getTemperature(&chirpTemperature);
-    
+
     float light;
     chirp.getLight(&light);
-    
+
     if (SerialSensors) {
       Serial.print("Chirp:\t");
       Serial.print(event.relative_humidity);
@@ -522,19 +523,19 @@ float sampleChirpSensor(boolean displaySensors) {
     if (displaySensors) {
       display.setTextColor(RED, BLACK);
       display.setTextSize(1);
-  
+
       display.setCursor(0, 0);
-      
+
       /* Display humidity */
       display.print("Hum:");
       display.print(event.relative_humidity);
       display.println("%");
-  
+
       /* Display temperature in C */
       display.print("Temp:");
       display.print(chirpTemperature);
       display.println("C");
-  
+
       /* Display temperature in C */
       display.print("Lux:");
       display.print(light);
@@ -546,20 +547,20 @@ float sampleChirpSensor(boolean displaySensors) {
 }
 
 void sampleBCP180(boolean displaySensors) {
-  
+
   // BCP180
   sensors_event_t event;
   bmp.getEvent(&event);
-  
+
   /* Display the results (barometric pressure is measure in hPa) */
   if (event.pressure)
   {
     if (displaySensors) {
       display.setTextColor(GRAY, BLACK);
       display.setTextSize(1);
-  
+
       display.setCursor(0, 24);
-      
+
       /* Display atmospheric pressue in hPa */
       display.print("Pres:");
       display.print(event.pressure);
@@ -575,20 +576,20 @@ void sampleBCP180(boolean displaySensors) {
     float seaLevelPressure =  1011.3; //SENSORS_PRESSURE_SEALEVELHPA;
 
     float altitude = bmp.pressureToAltitude(seaLevelPressure, event.pressure);
-    
+
     if (displaySensors) {
       display.print("Temp:");
       display.print(temperature);
       display.println(" C");
-  
-      display.print("Alt: "); 
-      display.print(altitude); 
+
+      display.print("Alt: ");
+      display.print(altitude);
       display.println(" m");
     }
 
     if (SerialSensors) {
-      Serial.print("BCP180:\t"); 
-      Serial.print(event.pressure); Serial.print("hPa\t"); 
+      Serial.print("BCP180:\t");
+      Serial.print(event.pressure); Serial.print("hPa\t");
       Serial.print(temperature); Serial.println("*C");
     }
   }
@@ -600,25 +601,25 @@ void sampleMCP9808(boolean displaySensors) {
   // Read and print out the temperature, then convert to *F
   float c = tempsensor.readTempC();
   float f = c * 9.0 / 5.0 + 32;
-  
+
   if (SerialSensors) {
-    Serial.print("MCP9808:\t"); 
-    Serial.print(c); Serial.print("*C\t"); 
+    Serial.print("MCP9808:\t");
+    Serial.print(c); Serial.print("*C\t");
     Serial.print(f); Serial.println("*F");
   }
 
   if (displaySensors) {
     display.setTextColor(YELLOW, BLACK);
     display.setTextSize(1);
-    display.setCursor(0, 48);display.print("Temp:"); 
-    display.setCursor(48,48);display.print(c); display.write(9); display.print("C"); 
-    display.setCursor(48,56);display.print(f); display.write(9); display.println("F");
+    display.setCursor(0, 48); display.print("Temp:");
+    display.setCursor(48, 48); display.print(c); display.write(9); display.print("C");
+    display.setCursor(48, 56); display.print(f); display.write(9); display.println("F");
   }
 }
 
 void heartbeat() {
   static boolean heartbeat_toggle = false;
-  
+
   if (heartbeat_toggle) {
     plotSymbol(0, 3, WHITE, RED, true);
   } else {
@@ -633,8 +634,8 @@ void plotSymbol(char pos, char ch, uint16_t fgColor, uint16_t bgColor, boolean f
   static int border = 1 * textSize;
   static int w = 5 * textSize + border * 2;
   static int h = 7 * textSize + border;
-  static int x = display.width() -w ;
-  
+  static int x = display.width() - w ;
+
   int y = 0 + (pos * h);
 
   display.setCursor(x + border, y);
@@ -652,10 +653,10 @@ void plotSymbol(char pos, char ch, uint16_t fgColor, uint16_t bgColor, boolean f
 }
 
 
-/*************************************************** 
+/***************************************************
   Notes - Not in use.
  ****************************************************/
- 
+
 void mediabuttons() {
   const int x = 0;
   const int y = 0;
@@ -670,46 +671,46 @@ void mediabuttons() {
   const int w1 = (w / 2) - (gap / 2) - border;
   const int h1 = h - border * 2;
 
-  const int t1x = x1+7;
-  const int t1y = y1+7;
+  const int t1x = x1 + 7;
+  const int t1y = y1 + 7;
   const int t2x = t1x;
-  const int t2y = y1+h1-7;
-  const int t3x = x1+w1-7;
-  const int t3y = y1+(h1/2);
+  const int t2y = y1 + h1 - 7;
+  const int t3x = x1 + w1 - 7;
+  const int t3y = y1 + (h1 / 2);
 
-  const int p1x = x2+7;
+  const int p1x = x2 + 7;
   const int p1y = t1y;
   const int p1w = 12;
-  const int p1h = t2y-t1y;
-  const int p2x = x2+w1-12-7;
+  const int p1h = t2y - t1y;
+  const int p2x = x2 + w1 - 12 - 7;
   const int p2y = t1y;
   const int p2w = 12;
-  const int p2h = t2y-t1y;
+  const int p2h = t2y - t1y;
 
-  
- // play
+
+  // play
   display.fillScreen(BLACK);
   display.fillRoundRect(x1, y1, w1, h1, 8, WHITE);
   display.fillTriangle(t1x, t1y, t2x, t2y, t3x, t3y, RED);
   delay(500);
   // pause
   display.fillRoundRect(x2, y1, w1, h1, 8, WHITE);
-  display.fillRoundRect(p1x,p1y,p1w,p1h, 5, GREEN);
-  display.fillRoundRect(p2x,p2y,p2w,p2h, 5, GREEN);
+  display.fillRoundRect(p1x, p1y, p1w, p1h, 5, GREEN);
+  display.fillRoundRect(p2x, p2y, p2w, p2h, 5, GREEN);
   delay(500);
   // play color
   display.fillTriangle(t1x, t1y, t2x, t2y, t3x, t3y, BLUE);
   delay(50);
   // pause color
-  display.fillRoundRect(p1x,p1y,p1w,p1h, 5, RED);
-  display.fillRoundRect(p2x,p2y,p2w,p2h, 5, RED);
+  display.fillRoundRect(p1x, p1y, p1w, p1h, 5, RED);
+  display.fillRoundRect(p2x, p2y, p2w, p2h, 5, RED);
   // play color
   display.fillTriangle(t1x, t1y, t2x, t2y, t3x, t3y, GREEN);
 }
 
 
 void menu_setup() {
-    
+
   static Menu mm("Settings");
   static MenuItem mm_mi1("Demo Item 1");
   static MenuItem mm_mi2("Demo Item 2");
@@ -717,7 +718,7 @@ void menu_setup() {
   mm.add_item(&mm_mi1, &on_item1_selected);
   mm.add_item(&mm_mi2, &on_item2_selected);
   mm.add_item(&mm_mi3, &on_item3_selected);
-  
+
   static Menu mu1("Display");
   static MenuItem mu1_mi1("Moisture");
   static MenuItem mu1_mi2("Light");
@@ -728,7 +729,7 @@ void menu_setup() {
   mu1.add_item(&mu1_mi2, &on_display_light);
   mu1.add_item(&mu1_mi3, &on_display_temperature);
   mu1.add_item(&mu1_mi4, &on_display_outputs);
-  
+
   static Menu mu2("Test Outputs");
   static MenuItem mu2_mi1("Output 1");
   static MenuItem mu2_mi2("Output 2");
@@ -754,7 +755,7 @@ void displayMenu(bool redraw) {
   static const byte lineSelected = 3;
   static const byte numBefore = lineSelected - 2;
   static const byte numAfter = 5 - lineSelected;
-  
+
   static byte previousIndex = -1;
 
   // Display the menu
@@ -774,17 +775,17 @@ void displayMenu(bool redraw) {
   display.setTextSize(1);
 
   if (redraw) {
-    
+
     display.fillScreen(BLACK);
-  
+
     // Menu title
     display.setTextColor(BLUE, BLACK);
-    display.setCursor(0, lineHeight*1);
+    display.setCursor(0, lineHeight * 1);
     display.println(cp_menu->get_name());
 
     // Parent menu.
     display.setTextColor(GRAY, BLACK);
-    display.setCursor(0, lineHeight*0);
+    display.setCursor(0, lineHeight * 0);
     if (cp_parent != NULL) {
       display.print("<<");
       display.println(cp_parent->get_name());
@@ -795,39 +796,39 @@ void displayMenu(bool redraw) {
 
   if (redraw || previousIndex != cp_menu_sel_idx) {
     previousIndex = cp_menu_sel_idx;
-    
+
     // Selected item.
     display.setTextColor(BLUE, BLACK);
-    display.setCursor(0, lineHeight*lineSelected);
+    display.setCursor(0, lineHeight * lineSelected);
     display.print(cp_menu->get_selected()->get_name());
     display.println("               ");
-  
+
     // Switch to Gray pen.
     display.setTextColor(GRAY, BLACK);
-  
+
     // Preceding items.
     int lineOffset = lineSelected - cp_menu_sel_idx;
     for (int i = cp_menu_sel_idx - numBefore; i < cp_menu_sel_idx; ++i) {
-      display.setCursor(0, lineHeight*(lineOffset+i));
-      if (i>=0) {
+      display.setCursor(0, lineHeight * (lineOffset + i));
+      if (i >= 0) {
         MenuComponent const* cp_m_comp = cp_menu->get_menu_component(i);
         display.print(cp_m_comp->get_name());
       }
       display.println("               ");
     }
-    
+
     // Following items.
     for (int i = cp_menu_sel_idx + 1; i <= cp_menu_sel_idx + numAfter; ++i) {
-      display.setCursor(0, lineHeight*(lineOffset+i));
+      display.setCursor(0, lineHeight * (lineOffset + i));
       if (i < cp_menu_num_items) {
         MenuComponent const* cp_m_comp = cp_menu->get_menu_component(i);
         display.print(cp_m_comp->get_name());
       }
       display.println("               ");
     }
-  
+
   }
-  
+
 }
 
 
@@ -837,7 +838,7 @@ void on_item_selected(MenuItem* p_menu_item)
 {
   display.setTextColor(RED, BLACK);
   display.setTextSize(1);
-  display.setCursor(0,56);
+  display.setCursor(0, 56);
   display.print(p_menu_item->get_name());
   display.print(" selected");
 }
@@ -845,95 +846,95 @@ void on_item_selected(MenuItem* p_menu_item)
 void on_item1_selected(MenuItem* p_menu_item)
 {
   on_item_selected(p_menu_item);
-  
+
   display.setTextColor(RED, BLACK);
   display.setTextSize(1);
-  display.setCursor(0,18);
+  display.setCursor(0, 18);
   display.print("Item1 Selected  ");
-//  delay(1500); // so we can look the result on the LCD
+  //  delay(1500); // so we can look the result on the LCD
 }
 
 void on_item2_selected(MenuItem* p_menu_item)
 {
   on_item_selected(p_menu_item);
-  
+
   display.setTextColor(RED, BLACK);
   display.setTextSize(1);
-  display.setCursor(0,18);
+  display.setCursor(0, 18);
   display.print("Item2 Selected  ");
-//  delay(1500); // so we can look the result on the LCD
+  //  delay(1500); // so we can look the result on the LCD
 }
 
 void on_item3_selected(MenuItem* p_menu_item)
 {
   on_item_selected(p_menu_item);
-  
+
   display.setTextColor(RED, BLACK);
   display.setTextSize(1);
-  display.setCursor(0,18);
+  display.setCursor(0, 18);
   display.print("Item3 Selected  ");
-//  delay(1500); // so we can look the result on the LCD
+  //  delay(1500); // so we can look the result on the LCD
 }
 
 void on_display_moisture(MenuItem* p_menu_item)
 {
   on_item_selected(p_menu_item);
-  
+
   setViewMode(VIEWMODE_ROTARY);
 }
 void on_display_light(MenuItem* p_menu_item)
 {
   on_item_selected(p_menu_item);
-  
+
   setViewMode(VIEWMODE_ROTARY);
 }
 void on_display_temperature(MenuItem* p_menu_item)
 {
   on_item_selected(p_menu_item);
-  
+
   setViewMode(VIEWMODE_ROTARY);
 }
 void on_display_outputs(MenuItem* p_menu_item)
 {
   on_item_selected(p_menu_item);
-  
+
   setViewMode(VIEWMODE_ROTARY);
 }
 
 void on_test_output1(MenuItem* p_menu_item)
 {
   on_item_selected(p_menu_item);
-  
+
   digitalWrite(out1, !digitalRead(out1));
 }
 void on_test_output2(MenuItem* p_menu_item)
 {
   on_item_selected(p_menu_item);
-  
+
   digitalWrite(out2, !digitalRead(out2));
 }
 void on_test_output3(MenuItem* p_menu_item)
 {
   on_item_selected(p_menu_item);
-  
+
   digitalWrite(out3, !digitalRead(out3));
 }
 void on_test_output4(MenuItem* p_menu_item)
 {
   on_item_selected(p_menu_item);
-  
+
   digitalWrite(out4, !digitalRead(out4));
 }
 void on_test_output5(MenuItem* p_menu_item)
 {
   on_item_selected(p_menu_item);
-  
+
   digitalWrite(out5, !digitalRead(out5));
 }
 void on_test_output6(MenuItem* p_menu_item)
 {
   on_item_selected(p_menu_item);
-  
+
   digitalWrite(out6, !digitalRead(out6));
 }
 
