@@ -110,6 +110,13 @@ typedef struct {
   uint16_t backColor;
 } ring_data_t;
 
+typedef struct {
+  float moisture;
+  float pressure;
+  float temperature;
+  float light;
+  unsigned long lastUpdated;
+} sensor_values_t;
 
 
 /***************************************************
@@ -267,8 +274,9 @@ void loop() {
   }
 
   // Sensor Sampling
-  static float moisture = 50;
-  static ring_data_t moisture_ring;
+  static sensor_values_t sensor_readings;
+  boolean newData = false;
+  unsigned long lastUpdated = sensor_readings.lastUpdated;
 
   static unsigned long lastSensorLoop = 0;
   if (currentMillis - lastSensorLoop > 1000) {
@@ -276,12 +284,14 @@ void loop() {
     boolean sendToDisplay = (viewMode == VIEWMODE_SENSORS);
 
     if (sendToDisplay) heartbeat();
-    moisture = sampleChirpSensor(sendToDisplay);
     
-    sampleBCP180(sendToDisplay);
-    sampleMCP9808(sendToDisplay);
+    sampleChirpSensor(&sensor_readings, sendToDisplay);
+    sampleBCP180(&sensor_readings, sendToDisplay);
+    sampleMCP9808(&sensor_readings, sendToDisplay);
 
-    if (moisture < 10) {
+    newData = (lastUpdated != sensor_readings.lastUpdated);
+    
+    if (sensor_readings.moisture < 10) {
       digitalWrite(out6, LOW);
     } else {
       digitalWrite(out6, HIGH);
@@ -289,13 +299,7 @@ void loop() {
   }
   
   if (viewMode == VIEWMODE_MOISTURE) {
-    moisture_ring.val = (int)moisture;
-    moisture_ring.min = 0;
-    moisture_ring.max = 100;
-    moisture_ring.colorScheme = BLUE;
-    moisture_ring.backColor = BLACK;
-
-    displayRingMeter(&moisture_ring);
+    displayRingMeter(&sensor_readings);
   }
 }
 

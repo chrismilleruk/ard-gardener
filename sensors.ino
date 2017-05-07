@@ -3,7 +3,7 @@
   Loop Routines (Sensors)
  ****************************************************/
 
-float sampleChirpSensor(boolean displaySensors) {
+float sampleChirpSensor(sensor_values_t* sensor_values, boolean displaySensors) {
   sensors_event_t event;
   chirp.getEvent(&event);
 
@@ -14,6 +14,10 @@ float sampleChirpSensor(boolean displaySensors) {
 
     float light;
     chirp.getLight(&light);
+
+    sensor_values->moisture = event.relative_humidity;
+    sensor_values->light = light;
+    sensor_values->lastUpdated = event.timestamp;
 
     if (SerialSensors) {
       Serial.print("Chirp:\t");
@@ -51,7 +55,7 @@ float sampleChirpSensor(boolean displaySensors) {
   return event.relative_humidity;
 }
 
-void sampleBCP180(boolean displaySensors) {
+float sampleBCP180(sensor_values_t* sensor_values, boolean displaySensors) {
 
   // BCP180
   sensors_event_t event;
@@ -60,6 +64,9 @@ void sampleBCP180(boolean displaySensors) {
   /* Display the results (barometric pressure is measure in hPa) */
   if (event.pressure)
   {
+    sensor_values->pressure = event.pressure;
+    sensor_values->lastUpdated = event.timestamp;
+
     if (displaySensors) {
       display.setTextColor(GRAY, BLACK);
       display.setTextScale(1);
@@ -99,13 +106,17 @@ void sampleBCP180(boolean displaySensors) {
     }
   }
 
+  return event.pressure;
 }
 
-void sampleMCP9808(boolean displaySensors) {
+float sampleMCP9808(sensor_values_t* sensor_values, boolean displaySensors) {
   // MCP9808
   // Read and print out the temperature, then convert to *F
   float c = tempsensor.readTempC();
   float f = c * 9.0 / 5.0 + 32;
+
+  sensor_values->temperature = c;
+  sensor_values->lastUpdated = millis();
 
   if (SerialSensors) {
     Serial.print("MCP9808:\t");
@@ -120,5 +131,7 @@ void sampleMCP9808(boolean displaySensors) {
     display.setCursor(48, 48); display.print(c); display.write(9); display.print("C");
     display.setCursor(48, 56); display.print(f); display.write(9); display.println("F");
   }
+
+  return c;
 }
 
